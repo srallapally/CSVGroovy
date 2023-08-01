@@ -11,7 +11,7 @@ import org.identityconnectors.framework.common.objects.filter.EqualsFilter
 import org.identityconnectors.framework.common.objects.filter.FilterBuilder
 import org.identityconnectors.framework.common.objects.filter.StartsWithFilter
 import org.identityconnectors.framework.common.exceptions.ConnectorException
-
+import org.identityconnectors.framework.common.FrameworkUtil
 
 
 def operation = operation as OperationType
@@ -21,8 +21,8 @@ def log = log as Log
 def objectClass = objectClass as ObjectClass
 def options = options as OperationOptions
 
-println "Entering " + operation + " Script"
-println "ObjectClass: " + objectClass.objectClassValue
+println "########## Entering " + operation + " Script"
+println "########## ObjectClass: " + objectClass.objectClassValue
 def query = [:]
 def queryFilter = 'true'
 
@@ -40,15 +40,25 @@ switch (objectClass.objectClassValue) {
             throw new ConnectorException("File location not specified")
         }
         if(filter != null){
-            if(filter instanceof EqualsFilter){
-                query = filter.attributeExpression as Map
-                queryFilter = query.operation + ":" + query.left + ":" + query.right
+            def uuid = FrameworkUtil.getUidIfGetOperation(filter)
+            if(uuid){
+                resource = resources.find { row ->
+                    row.User_Name == uuid.uidValue
+                }
+                if(resource.size() == 0){
+                    throw new ConnectorException("No user found with uid: " + uuid)
+                } else {
+                    handler {
+                        uid resource.User_Name
+                        id  resource.User_Name
+                        attribute 'lastName', resource.User_Last_Name
+                        attribute 'firstName', resource.User_First_Name
+                        attribute 'userName', resource.User_Name
+                        attribute 'groups', resource.Groups
+                    }
+                }
             }
-            else if(filter instanceof StartsWithFilter){
-                println filter
-                println filter.getName()
-                println filter.getValue()
-            }
+            return new SearchResult()
         } else {
             if (null != options.getPageSize()) {
                 String pagedResultsCookie = options.getPagedResultsCookie();
@@ -72,7 +82,6 @@ switch (objectClass.objectClassValue) {
                     handler {
                         uid row.User_Name
                         id  row.User_Name
-                        attribute 'email', row.User_Name
                         attribute 'lastName', row.User_Last_Name
                         attribute 'firstName', row.User_First_Name
                         attribute 'userName', row.User_Name
@@ -92,15 +101,24 @@ switch (objectClass.objectClassValue) {
             throw new ConnectorException("File location not specified")
         }
         if(filter != null){
-            if(filter instanceof EqualsFilter){
-                query = filter.attributeExpression as Map
-                queryFilter = query.operation + ":" + query.left + ":" + query.right
+            def uuid = FrameworkUtil.getUidIfGetOperation(filter)
+            println "Searching " + objectClass.objectClassValue + " for " + uuid
+            if(uuid){
+                resource = resources.find { row ->
+                    row.GROUP_NAME == uuid.uidValue
+                }
+                if(resource.size() == 0){
+                    throw new ConnectorException("No user found with uid: " + uuid)
+                } else {
+                    handler {
+                        uid resource.GROUP_NAME
+                        id  resource.GROUP_NAME
+                        attribute 'groupName', resource.GROUP_NAME
+                        attribute 'groupDisplayName', resource.GROUP_DESC
+                    }
+                }
             }
-            else if(filter instanceof StartsWithFilter){
-                println filter
-                println filter.getName()
-                println filter.getValue()
-            }
+            return new SearchResult()
         } else {
             if (null != options.getPageSize()) {
                 String pagedResultsCookie = options.getPagedResultsCookie();
@@ -118,7 +136,6 @@ switch (objectClass.objectClassValue) {
                 }
                 def remainingPagedResults = resources.size() - pageSize
                 resources = resources.subList 0, Math.min(pageSize, resources.size())
-
 
                 resources.each { row ->
                     handler {
@@ -152,7 +169,9 @@ def loadAccountData (String fileName) {
     // Group by 'User_Name' and collect 'GROUP_NAME' into 'Groups'.
     def groupedData = newData.groupBy { it.User_Name }.collect { userName, rows ->
         def groups = rows*.GROUP_NAME.join(', ')
-        rows[0] + [Groups: groups]
+        def list = []
+        list = groups.split("\\s*,\\s*")
+        rows[0] + [Groups: list]
     }
     return groupedData
 }
@@ -170,6 +189,7 @@ def loadGroupData (String fileName) {
 
     // Eliminate duplicates from newData using GROUP_NAME as the key
     def uniqueGroupData = newData.unique().sort { a, b -> a.GROUP_NAME <=> b.GROUP_NAME }
+    println uniqueGroupData
     return uniqueGroupData
 }
 
