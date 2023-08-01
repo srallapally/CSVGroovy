@@ -27,8 +27,8 @@ def query = [:]
 def queryFilter = 'true'
 
 
-switch (objectClass.objectClassValue) {
-    case "__ACCOUNT__":
+switch (objectClass) {
+    case objectClass.ACCOUNT:
         // Handle the results
 
         def fileLocation = configuration.propertyBag.__ACCOUNT__.fileloc
@@ -39,6 +39,8 @@ switch (objectClass.objectClassValue) {
         } else {
             throw new ConnectorException("File location not specified")
         }
+        String pagedResultsCookie = options.getPagedResultsCookie();
+        String currentPagedResultsCookie = options.getPagedResultsCookie();
         if(filter != null){
             def uuid = FrameworkUtil.getUidIfGetOperation(filter)
             if(uuid){
@@ -61,8 +63,6 @@ switch (objectClass.objectClassValue) {
             return new SearchResult()
         } else {
             if (null != options.getPageSize()) {
-                String pagedResultsCookie = options.getPagedResultsCookie();
-                String currentPagedResultsCookie = options.getPagedResultsCookie();
                 Integer pagedResultsOffset =
                         null != options.getPagedResultsOffset() ? Math.max(0, options
                                 .getPagedResultsOffset()) : 0;
@@ -76,22 +76,22 @@ switch (objectClass.objectClassValue) {
                 }
                 def remainingPagedResults = resources.size() - pageSize
                 resources = resources.subList 0, Math.min(pageSize, resources.size())
-
-
-                resources.each { row ->
-                    handler {
-                        uid row.User_Name
-                        id  row.User_Name
-                        attribute 'lastName', row.User_Last_Name
-                        attribute 'firstName', row.User_First_Name
-                        attribute 'userName', row.User_Name
-                        attribute 'groups', row.Groups
-                    }
-                }
-                return new SearchResult(pagedResultsCookie,-1);
+            } else {
+                println "################ No paging for Account"
             }
+            resources.each { row ->
+                handler {
+                    uid row.User_Name
+                    id  row.User_Name
+                    attribute 'lastName', row.User_Last_Name
+                    attribute 'firstName', row.User_First_Name
+                    attribute 'userName', row.User_Name
+                    attribute 'groups', row.Groups
+                }
+            }
+            return new SearchResult(pagedResultsCookie,-1);
         }
-    case "__GROUP__":
+    case objectClass.GROUP:
         def fileLocation = configuration.propertyBag.__GROUP__.fileloc
         def resources = null
         if(null != fileLocation) {
@@ -100,6 +100,8 @@ switch (objectClass.objectClassValue) {
         } else {
             throw new ConnectorException("File location not specified")
         }
+        String pagedResultsCookie = options.getPagedResultsCookie();
+        String currentPagedResultsCookie = options.getPagedResultsCookie();
         if(filter != null){
             def uuid = FrameworkUtil.getUidIfGetOperation(filter)
             println "Searching " + objectClass.objectClassValue + " for " + uuid
@@ -118,11 +120,10 @@ switch (objectClass.objectClassValue) {
                     }
                 }
             }
-            return new SearchResult()
+            return new SearchResult(pagedResultsCookie,-1);
         } else {
             if (null != options.getPageSize()) {
-                String pagedResultsCookie = options.getPagedResultsCookie();
-                String currentPagedResultsCookie = options.getPagedResultsCookie();
+
                 Integer pagedResultsOffset =
                         null != options.getPagedResultsOffset() ? Math.max(0, options
                                 .getPagedResultsOffset()) : 0;
@@ -136,21 +137,23 @@ switch (objectClass.objectClassValue) {
                 }
                 def remainingPagedResults = resources.size() - pageSize
                 resources = resources.subList 0, Math.min(pageSize, resources.size())
-
-                resources.each { row ->
-                    handler {
-                        uid row.GROUP_NAME
-                        id  row.GROUP_NAME
-                        attribute 'groupName', row.GROUP_NAME
-                        attribute 'groupDisplayName', row.GROUP_DESC
-                    }
-                }
-                return new SearchResult(pagedResultsCookie,-1);
+                println "################ Paging for Group " + resources.size()
+            } else {
+                println "################ No paging for Group " + resources.size()
             }
+            resources.each { row ->
+                handler {
+                    uid row.GROUP_NAME
+                    id  row.GROUP_NAME
+                    attribute 'groupName', row.GROUP_NAME
+                    attribute 'groupDisplayName', row.GROUP_DESC
+                }
+            }
+            return new SearchResult(pagedResultsCookie,-1);
+
         }
     default:
-        throw new UnsupportedOperationException(operation.name() + " operation of type:" +
-                objectClass.objectClassValue + " is not supported.")
+        break
 }
 
 def loadAccountData (String fileName) {
@@ -189,7 +192,7 @@ def loadGroupData (String fileName) {
 
     // Eliminate duplicates from newData using GROUP_NAME as the key
     def uniqueGroupData = newData.unique().sort { a, b -> a.GROUP_NAME <=> b.GROUP_NAME }
-    println uniqueGroupData
+    //println uniqueGroupData
     return uniqueGroupData
 }
 
