@@ -35,7 +35,7 @@ switch (objectClass) {
         def resources = null
         if(null != fileLocation) {
             println "Loading " + fileLocation
-            resources = loadAccountData(fileLocation)
+            resources = loadAccountDatav2(fileLocation)
         } else {
             throw new ConnectorException("File location not specified")
         }
@@ -154,6 +154,21 @@ switch (objectClass) {
         }
     default:
         break
+}
+
+def loadAccountDatav2 (String fileName) {
+    File csvFile = new File (fileName)
+    if (!csvFile.exists()) {
+        throw new ConnectorException("File not found: " + fileName)
+    }
+    def csvContent = csvFile.text
+    def csvData = parseCsv(separator: ',', readFirstLine: false,csvContent)
+    def newData = csvData.collect { row ->
+        [User_Name: row.User_Name, User_First_Name: row.User_First_Name, User_Last_Name: row.User_Last_Name, GROUP_NAME: row.GROUP_NAME]
+    }
+    // Sort by 'User_Name'.
+    newData.sort { a, b -> a.User_Name <=> b.User_Name }
+    return newData
 }
 
 def loadAccountData (String fileName) {
