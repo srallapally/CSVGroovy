@@ -43,20 +43,22 @@ switch (objectClass) {
         String currentPagedResultsCookie = options.getPagedResultsCookie();
         if(filter != null){
             def uuid = FrameworkUtil.getUidIfGetOperation(filter)
+            println "Searching for " + uuid.uidValue
             if(uuid){
                 resource = resources.find { row ->
-                    row.User_Name == uuid.uidValue
+                    row.User_Name.toUpperCase() == uuid.uidValue.toUpperCase()
                 }
                 if(resource.size() == 0){
                     throw new ConnectorException("No user found with uid: " + uuid)
                 } else {
+                    def groupList = Arrays.asList(resource.Groups.split("\\s*,\\s*"));
                     handler {
                         uid resource.User_Name
                         id  resource.User_Name
                         attribute 'lastName', resource.User_Last_Name
                         attribute 'firstName', resource.User_First_Name
                         attribute 'userName', resource.User_Name
-                        attribute 'groups', resource.Groups
+                        attribute 'groups', groupList
                     }
                 }
             }
@@ -80,13 +82,15 @@ switch (objectClass) {
                 println "################ No paging for Account"
             }
             resources.each { row ->
+                //println row.Groups
+                def groupList = Arrays.asList(row.Groups.split("\\s*,\\s*"));
                 handler {
                     uid row.User_Name
                     id  row.User_Name
                     attribute 'lastName', row.User_Last_Name
                     attribute 'firstName', row.User_First_Name
                     attribute 'userName', row.User_Name
-                    attribute 'groups', row.Groups
+                    attribute 'groups', groupList
                 }
             }
             return new SearchResult(pagedResultsCookie,-1);
@@ -155,7 +159,6 @@ switch (objectClass) {
     default:
         break
 }
-
 def loadAccountDatav2 (String fileName) {
     File csvFile = new File (fileName)
     if (!csvFile.exists()) {
@@ -164,13 +167,14 @@ def loadAccountDatav2 (String fileName) {
     def csvContent = csvFile.text
     def csvData = parseCsv(separator: ',', readFirstLine: false,csvContent)
     def newData = csvData.collect { row ->
-        [User_Name: row.User_Name, User_First_Name: row.User_First_Name, User_Last_Name: row.User_Last_Name, GROUP_NAME: row.GROUP_NAME]
+        [User_Name: row.User_Name, User_First_Name: row.User_First_Name, User_Last_Name: row.User_Last_Name, Groups: row.Groups]
     }
     // Sort by 'User_Name'.
     newData.sort { a, b -> a.User_Name <=> b.User_Name }
+    //println newData
     return newData
-}
 
+}
 def loadAccountData (String fileName) {
     File csvFile = new File (fileName)
     if (!csvFile.exists()) {
