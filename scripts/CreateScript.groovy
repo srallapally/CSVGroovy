@@ -1,4 +1,4 @@
-b('com.xlson.groovycsv:groovycsv:1.3')
+@Grab('com.xlson.groovycsv:groovycsv:1.3')
 import static com.xlson.groovycsv.CsvParser.parseCsv
 
 import org.forgerock.openicf.connectors.groovy.OperationType
@@ -21,7 +21,7 @@ def configuration = configuration as ScriptedConfiguration
 def objectClass = objectClass as ObjectClass
 def options = options as OperationOptions
 def createAttributes = new AttributesAccessor(attributes as Set<Attribute>)
-def uid = uid as Uid
+def uid = id as String
 def log = log as Log
 
 switch (operation) {
@@ -36,23 +36,23 @@ switch (operation) {
                 def lastName = null
                 def groups = []
 
-                if (updateAttributes.hasAttribute("userName")) {
-                    userName = updateAttributes.findString("userName")
+                if (createAttributes.hasAttribute("userName")) {
+                    userName = createAttributes.findString("userName")
                 }
 
-                if (updateAttributes.hasAttribute("firstName")) {
-                    firstName = updateAttributes.findString("firstName")
+                if (createAttributes.hasAttribute("firstName")) {
+                    firstName = createAttributes.findString("firstName")
                 }
 
-                if (updateAttributes.hasAttribute("lastName")) {
-                    lastName = updateAttributes.findString("lastName")
+                if (createAttributes.hasAttribute("lastName")) {
+                    lastName = createAttributes.findString("lastName")
                 }
 
-                if (updateAttributes.hasAttribute("groups")) {
-                    groups = updateAttributes.findStringList("groups")
+                if (createAttributes.hasAttribute("groups")) {
+                    groups = createAttributes.findStringList("groups")
                 }
 
-                if(checkIfRecordExists(fileLocation, userName)){
+                if(!checkIfRecordExists(fileLocation, userName)){
                     def result = WriteFileWithLock(fileLocation, userName, firstName, lastName, groups)
                 } else {
                         throw new ConnectorException("User exists: " + userName)
@@ -69,7 +69,7 @@ def checkIfRecordExists (String fileName, String userName) {
     def csvContent = csvFile.text
     def csvData = parseCsv(separator: ',', readFirstLine: false,csvContent)
     def newData = csvData.collect { row ->
-        [User_Name: row.User_Name, User_First_Name: row.User_First_Name, User_Last_Name: row.User_Last_Name, GROUP_NAME: row.GROUP_NAME]
+        [User_Name: row.User_Name, User_First_Name: row.User_First_Name, User_Last_Name: row.User_Last_Name, Groups: row.Groups]
     }
     // Sort by 'User_Name'.
     newData.sort { a, b -> a.User_Name <=> b.User_Name }
@@ -108,7 +108,8 @@ def WriteFileWithLock(String fileName, String userName, String firstName, String
             sleep(1000)
         }
     }
-    srcFile.append("\n" + userName + "," + firstName + "," + lastName + "," + groups.join(","))
+     srcFile.append('\n\"'+userName+'\",\"'+firstName+'\",\"'+lastName+'\",\"'+groups.join(',')+'\"')
+    //srcFile.append("\n" + userName + "," + firstName + "," + lastName + "," + groups.join(","))
     lock.release()
     channel.close()
     return true

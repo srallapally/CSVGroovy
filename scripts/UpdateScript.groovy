@@ -32,8 +32,7 @@ switch (operation) {
             case ObjectClass.ACCOUNT:
                 def fileLocation = configuration.propertyBag.__ACCOUNT__.fileloc
                 def header = ['User_Name', 'User_First_Name', 'User_Last_Name', 'Groups']
-
-
+                
                 def userName = null
                 def firstName = null
                 def lastName = null
@@ -50,7 +49,7 @@ switch (operation) {
                 if (updateAttributes.hasAttribute("lastName")) {
                     lastName = updateAttributes.findString("lastName")
                 }
-
+        
                 if (updateAttributes.hasAttribute("groups")) {
                     groups = updateAttributes.findStringList("groups")
                 }
@@ -62,7 +61,7 @@ switch (operation) {
                     throw new ConnectorException("Failed to update file")
                 }
                 return userName
-            case ObjectClass.GROUP:
+             case ObjectClass.GROUP:
                 def fileLocation = configuration.propertyBag.__GROUP__.fileloc
                 def header = ["GROUP_NAME","GROUP_DESC"]
 
@@ -83,14 +82,14 @@ switch (operation) {
                     log.info("Updated file")
                 } else {
                     throw new ConnectorException("Failed to update file")
-                }
+                } 
 
                 return groupName
             default:
                 throw new ConnectorException("UpdateScript can not handle object type: " + objectClass.objectClassValue)
-
-
-        }
+            
+            
+        }              
     default:
         throw new ConnectorException("UpdateScript can not handle object type: " + objectClass.objectClassValue)
 }
@@ -113,7 +112,7 @@ def writeGroupFileWithLock(String filePath, ArrayList header, String groupName, 
     newData.sort { a, b -> a.GROUP_NAME <=> b.GROUP_NAME }
     def alData = []
 
-    for (line in newData) {
+     for (line in newData) {
         if (line.GROUP_NAME.equalsIgnoreCase(groupName)) {
             def tmpFileName = filePath + "_delete."+System.currentTimeMillis()
             def tmpFile = new File(tmpFileName)
@@ -128,7 +127,7 @@ def writeGroupFileWithLock(String filePath, ArrayList header, String groupName, 
         }
     }
 
-    println "writeGroupFileWithLock: Appending changed record"
+     println "writeGroupFileWithLock: Appending changed record"
     logger.info("writeGroupFileWithLock: Appending changed record")
 
     try {
@@ -138,13 +137,13 @@ def writeGroupFileWithLock(String filePath, ArrayList header, String groupName, 
     } catch (Exception e) {
         println "writeGroupFileWithLock:Error adding data: ${e}"
         logger.info("writeGroupFileWithLock:Error adding data:")
-    }
-    // Sort by 'User_Name'.
-    try {
+    }        
+     // Sort by 'User_Name'.
+     try {
         alData.sort {a, b -> a[0].compareTo(b[0])}
-    } catch (Exception e) {
+     } catch (Exception e) {
         println "writeGroupFileWithLock:Error sorting data: ${e}"
-    }
+     }    
     //println alData
     def bakFileName = filePath + "_bak."+System.currentTimeMillis()
     def bakFile = new File(bakFileName)
@@ -175,7 +174,7 @@ def writeGroupFileWithLock(String filePath, ArrayList header, String groupName, 
     // make sure to release the lock and close the channel when done
     lock.release()
     channel.close()
-
+    
     return true
 
 }
@@ -197,7 +196,7 @@ def writeAccountFileWithLock(String filePath, ArrayList header, String userName,
     // Sort by 'User_Name'.
     newData.sort { a, b -> a.User_Name <=> b.User_Name }
     def alData = []
-
+   
     for (line in newData) {
         //println line.User_Name
         if (line.User_Name.equalsIgnoreCase(userName)) {
@@ -223,13 +222,13 @@ def writeAccountFileWithLock(String filePath, ArrayList header, String userName,
     } catch (Exception e) {
         println "writeAccountFileWithLock:Error adding data: ${e}"
         logger.info("writeAccountFileWithLock:Error adding data:")
-    }
-    // Sort by 'User_Name'.
-    try {
+    }        
+     // Sort by 'User_Name'.
+     try {
         alData.sort {a, b -> a[0].compareTo(b[0])}
-    } catch (Exception e) {
+     } catch (Exception e) {
         println "writeFileWithLock:Error sorting data: ${e}"
-    }
+     }    
     //println alData
     def bakFileName = filePath + "_bak."+System.currentTimeMillis()
     def bakFile = new File(bakFileName)
@@ -260,6 +259,6 @@ def writeAccountFileWithLock(String filePath, ArrayList header, String userName,
     // make sure to release the lock and close the channel when done
     lock.release()
     channel.close()
-
+    
     return true
 }
