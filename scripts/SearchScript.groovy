@@ -23,8 +23,8 @@ def log = log as Log
 def objectClass = objectClass as ObjectClass
 def options = options as OperationOptions
 
-//println "########## Entering " + operation + " Script"
-//println "########## ObjectClass: " + objectClass.objectClassValue
+println "########## Entering " + operation + " Script"
+println "########## ObjectClass: " + objectClass.objectClassValue
 def map = [:]
 //def queryFilter = 'true'
 
@@ -41,11 +41,13 @@ switch (objectClass) {
         if(null != fileLocation) {
             println " Account: Loading " + fileLocation
             resources = loadAccountDatav2(fileLocation)
+            println "Total number of records: " + resources.size()
         } else {
             throw new ConnectorException("Account: File location not specified")
         }
         String pagedResultsCookie = options.getPagedResultsCookie();
         String currentPagedResultsCookie = options.getPagedResultsCookie();
+        //def remainingPagedResults = -1
         if(filter != null){
             def username = null
             if (filter instanceof EqualsFilter){
@@ -54,13 +56,7 @@ switch (objectClass) {
                     username = ((EqualsFilter) filter).getAttribute().getValue().get(0)
                 }
 
-                //def uuid = FrameworkUtil.getUidIfGetOperation(filter)
-                //println "Searching for " + uuid.uidValue
                 if(username != null){
-                    //println "UID " + uuid.uidValue
-                    //resource = resources.find { row ->
-                    //    row.User_Name.toUpperCase() == uuid.uidValue.toUpperCase()
-                    //}
                     resource = resources.find { row ->
                         row.User_Name.toUpperCase() == username.toUpperCase()
                     }
@@ -100,20 +96,38 @@ switch (objectClass) {
             }
             return new SearchResult()
         } else {
+            def remainingPagedResults = 0
+            def lastHandledIndex = -1
+            def index = 0
+            //def pageSize = 10
             if (null != options.getPageSize()) {
                 Integer pagedResultsOffset =
                         null != options.getPagedResultsOffset() ? Math.max(0, options
                                 .getPagedResultsOffset()) : 0;
+                //print "################ Paged Results Offset " + pagedResultsOffset
                 final Integer pageSize = options.getPageSize();
+                println "Page Size " + pageSize
                 if(options.pagedResultsCookie) {
+                    // println "################ Paged Results Cookie " + options.pagedResultsCookie.decodeBase64Url()
                     lastHandledIndex = resources.findIndexOf { resource ->
                         resource.uid == new String(options.pagedResultsCookie.decodeBase64Url())
                     }
+                    //println "################ Last Handled Index " + lastHandledIndex
                 } else if (options.pagedResultsOffset){
                     resources = resources.drop options.pagedResultsOffset
                 }
-                def remainingPagedResults = resources.size() - pageSize
-                resources = resources.subList 0, Math.min(pageSize, resources.size())
+                if(resources.size() > pageSize) {
+                    remainingPagedResults = resources.size() - pageSize
+                    resources = resources.subList 0, Math.min(pageSize, resources.size())
+                    println "There are " + resources.size() + " records to be processed"
+                    index = remainingPagedResults
+                } else {
+                    remainingPagedResults = resources.size()
+                    index = -1
+                }
+
+                //println "################ Remaining Paged Results " + remainingPagedResults
+                //resources = resources.subList 0, Math.min(pageSize, resources.size())
             } else {
                 println "################ No paging for Account"
             }
@@ -127,8 +141,15 @@ switch (objectClass) {
                     attribute 'userName', row.User_Name
                     attribute 'groups', groupList
                 }
+                currentPagedResultsCookie = row.User_Name
             }
-            return new SearchResult(pagedResultsCookie,-1);
+            println currentPagedResultsCookie + " is the last record processed"
+            if(index == -1)
+                currentPagedResultsCookie = null
+            //println "Index: " + index
+            //println "Current Paged Results Cookie: " + currentPagedResultsCookie
+
+            return new SearchResult(currentPagedResultsCookie,index);
         }
         break
     case objectClass.GROUP:
@@ -193,7 +214,6 @@ switch (objectClass) {
                 }
                 def remainingPagedResults = resources.size() - pageSize
                 resources = resources.subList 0, Math.min(pageSize, resources.size())
-                //println "################ Paging for Group " + resources.size()
             } else {
                 println "################ No paging for Group " + resources.size()
             }

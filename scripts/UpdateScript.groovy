@@ -32,6 +32,7 @@ switch (operation) {
             case ObjectClass.ACCOUNT:
                 def fileLocation = configuration.propertyBag.__ACCOUNT__.fileloc
                 def header = ['User_Name', 'User_First_Name', 'User_Last_Name', 'Groups']
+
                 
                 def userName = null
                 def firstName = null
